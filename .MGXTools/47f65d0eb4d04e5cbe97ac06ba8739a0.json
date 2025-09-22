@@ -13,9 +13,23 @@
                 "bash"
             ],
             "command_terminator": "\n"
+        },
+        "01": {
+            "tab_id": "01",
+            "cwd": "/workspace/backend",
+            "observer": {
+                "block": "Terminal",
+                "uuid": "c6178ba4-7360-41ff-a209-b17922892171",
+                "enable_llm_stream": false,
+                "callback_url": ""
+            },
+            "shell_command": [
+                "bash"
+            ],
+            "command_terminator": "\n"
         }
     },
-    "current_tab_id": "00",
+    "current_tab_id": "01",
     "forbidden_commands": {
         "run preview": "Use Deployer.deploy_to_public instead.",
         "serve ": "Use Deployer.deploy_to_public instead.",
