@@ -1,0 +1,35 @@
+# FastAPI and ASGI
+fastapi==0.104.1
+uvicorn[standard]==0.24.0
+
+# Database
+aiomysql==0.2.0
+databases[mysql]==0.8.0
+
+# Authentication and Security
+python-jose[cryptography]==3.3.0
+passlib[bcrypt]==1.7.4
+python-multipart==0.0.6
+
+# Configuration and Environment
+pydantic==2.5.0
+pydantic-settings==2.1.0
+python-decouple==3.8
+
+# HTTP Client for testing
+httpx==0.25.2
+
+# Testing
+pytest==7.4.3
+pytest-asyncio==0.21.1
+
+# Rate limiting
+slowapi==0.1.9
+
+# Logging
+structlog==23.2.0
+
+# Development
+black==23.11.0
+isort==5.12.0
+flake8==6.1.0
