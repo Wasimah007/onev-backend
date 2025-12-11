@@ -5,6 +5,7 @@ User service with raw SQL operations.
 import logging
 from typing import Optional, Dict, Any, List, Tuple
 from app.db import db_manager, build_pagination_query, build_count_query
+# from app.timsheet_db import db_manager, build_pagination_query, build_count_query
 from app.utils.passwords import hash_password
 
 logger = logging.getLogger(__name__)
@@ -20,7 +21,8 @@ class UserService:
         password: str,
         first_name: Optional[str] = None,
         last_name: Optional[str] = None,
-        department_id: Optional[int] = None,
+        group: Optional[str] = None,
+        # department_id: Optional[int] = None,
         is_admin: bool = False
     ) -> Optional[Dict[str, Any]]:
         """Create a new user."""
@@ -35,8 +37,8 @@ class UserService:
             
             # Insert user
             query = """
-            INSERT INTO users (email, username, password_hash, first_name, last_name, department_id, is_admin)
-            VALUES (:email, :username, :password_hash, :first_name, :last_name, :department_id, :is_admin)
+            INSERT INTO users (email, username, password_hash, first_name, last_name,`group`)
+            VALUES (:email, :username, :password_hash, :first_name, :last_name,:group)
             """
             
             values = {
@@ -45,8 +47,9 @@ class UserService:
                 "password_hash": password_hash,
                 "first_name": first_name,
                 "last_name": last_name,
-                "department_id": department_id,
-                "is_admin": is_admin
+                "group": group
+                # "department_id": department_id,
+                # "is_admin": is_admin
             }
             
             user_id = await db_manager.execute(query, values)
@@ -61,22 +64,20 @@ class UserService:
     async def get_user_by_id(self, user_id: int) -> Optional[Dict[str, Any]]:
         """Get user by ID with department info."""
         query = """
-        SELECT u.id, u.email, u.username, u.first_name, u.last_name, 
-               u.is_active, u.is_admin, u.department_id, u.created_at, u.updated_at,
-               d.name as department_name
+        SELECT u.users_id, u.email, u.username, u.first_name, u.last_name, 
+               u.is_active, u.created_at, u.updated_at
         FROM users u
-        LEFT JOIN departments d ON u.department_id = d.id
-        WHERE u.id = :user_id
+			WHERE u.users_id = :users_id;
         """
         
-        values = {"user_id": user_id}
+        values = {"users_id": user_id}
         return await db_manager.fetch_one(query, values)
     
     async def get_user_by_email_or_username(self, email: str, username: str) -> Optional[Dict[str, Any]]:
         """Get user by email or username."""
         query = """
-        SELECT id, email, username, password_hash, first_name, last_name, 
-               is_active, is_admin, department_id, created_at, updated_at
+        SELECT users_id, email, username, password_hash, first_name, last_name, 
+               is_active, created_at, updated_at
         FROM users 
         WHERE email = :email OR username = :username
         """
@@ -89,7 +90,7 @@ class UserService:
         page: int = 1,
         page_size: int = 20,
         search: Optional[str] = None,
-        department_id: Optional[int] = None,
+        # department_id: Optional[int] = None,
         is_active: Optional[bool] = None
     ) -> Tuple[List[Dict[str, Any]], int]:
         """Get paginated list of users with filtering."""
@@ -101,9 +102,9 @@ class UserService:
             conditions.append("(u.username LIKE :search OR u.email LIKE :search OR u.first_name LIKE :search OR u.last_name LIKE :search)")
             values["search"] = f"%{search}%"
         
-        if department_id is not None:
-            conditions.append("u.department_id = :department_id")
-            values["department_id"] = department_id
+        # if department_id is not None:
+        #     conditions.append("u.department_id = :department_id")
+        #     values["department_id"] = department_id
         
         if is_active is not None:
             conditions.append("u.is_active = :is_active")
@@ -113,12 +114,9 @@ class UserService:
         
         # Base query
         base_query = f"""
-        SELECT u.id, u.email, u.username, u.first_name, u.last_name, 
-               u.is_active, u.is_admin, u.department_id, u.created_at, u.updated_at,
-               d.name as department_name
+        SELECT u.users_id, u.email, u.username, u.first_name, u.last_name, 
+               u.is_active,u.created_at, u.updated_at
         FROM users u
-        LEFT JOIN departments d ON u.department_id = d.id
-        WHERE {where_clause}
         """
         
         # Get total count
@@ -145,7 +143,7 @@ class UserService:
         username: Optional[str] = None,
         first_name: Optional[str] = None,
         last_name: Optional[str] = None,
-        department_id: Optional[int] = None,
+        # department_id: Optional[int] = None,
         is_active: Optional[bool] = None,
         is_admin: Optional[bool] = None
     ) -> Optional[Dict[str, Any]]:
@@ -153,13 +151,13 @@ class UserService:
         try:
             # Build update fields
             update_fields = []
-            values = {"user_id": user_id}
+            values = {"users_id": user_id}
             
             if email is not None:
                 # Check if email is already taken by another user
                 existing = await db_manager.fetch_one(
-                    "SELECT id FROM users WHERE email = :email AND id != :user_id",
-                    {"email": email, "user_id": user_id}
+                    "SELECT users_id FROM users WHERE email = :email AND users_id != :users_id",
+                    {"email": email, "users_id": user_id}
                 )
                 if existing:
                     return None
@@ -169,8 +167,8 @@ class UserService:
             if username is not None:
                 # Check if username is already taken by another user
                 existing = await db_manager.fetch_one(
-                    "SELECT id FROM users WHERE username = :username AND id != :user_id",
-                    {"username": username, "user_id": user_id}
+                    "SELECT users_id FROM users WHERE username = :username AND users_id != :users_id",
+                    {"username": username, "users_id": user_id}
                 )
                 if existing:
                     return None
@@ -185,9 +183,9 @@ class UserService:
                 update_fields.append("last_name = :last_name")
                 values["last_name"] = last_name
             
-            if department_id is not None:
-                update_fields.append("department_id = :department_id")
-                values["department_id"] = department_id
+            # if department_id is not None:
+            #     update_fields.append("department_id = :department_id")
+            #     values["department_id"] = department_id
             
             if is_active is not None:
                 update_fields.append("is_active = :is_active")
@@ -205,7 +203,7 @@ class UserService:
             query = f"""
             UPDATE users 
             SET {', '.join(update_fields)}
-            WHERE id = :user_id
+            WHERE users_id = :users_id
             """
             
             result = await db_manager.execute(query, values)
@@ -225,10 +223,10 @@ class UserService:
             query = """
             UPDATE users 
             SET is_active = FALSE, updated_at = NOW()
-            WHERE id = :user_id
+            WHERE users_id = :users_id
             """
             
-            values = {"user_id": user_id}
+            values = {"users_id": user_id}
             result = await db_manager.execute(query, values)
             
             return result > 0

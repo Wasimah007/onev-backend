@@ -12,6 +12,12 @@ from app.db import db_manager
 from app.utils.passwords import hash_password, verify_password
 from app.auth.jwt import create_access_token, create_refresh_token, verify_token
 from app.config import settings
+from fastapi import HTTPException
+from app.config import settings
+import httpx
+from app.auth.azure_verify import verify_azure_token
+from jwt.algorithms import RSAAlgorithm
+import jwt
 
 logger = logging.getLogger(__name__)
 
@@ -115,17 +121,30 @@ class AuthService:
     
     async def get_user_by_id(self, user_id: str) -> Optional[Dict[str, Any]]:
         """Get user by ID with role information."""
+        # query = """
+        # SELECT u.users_id, u.email, u.username, u.first_name, u.last_name, 
+        #        u.phone, u.department, u.employee_id, u.`group`, u.is_active, 
+        #        u.created_at, u.updated_at,
+        #        GROUP_CONCAT(r.name) as roles,
+        #        CASE WHEN GROUP_CONCAT(r.name) LIKE '%Admin%' THEN TRUE ELSE FALSE END as is_admin
+        # FROM users u
+        # LEFT JOIN user_roles ur ON u.users_id = ur.users_id AND ur.is_active = TRUE
+        # LEFT JOIN roles r ON ur.roles_id = r.roles_id AND r.is_active = TRUE
+        # WHERE u.users_id = :user_id AND u.is_active = TRUE
+        # GROUP BY u.users_id
+        # """
+        
+        
         query = """
         SELECT u.users_id, u.email, u.username, u.first_name, u.last_name, 
-               u.phone, u.department, u.employee_id, u.`group`, u.is_active, 
+               u.phone, u.department, u.employee_id, u.is_active, 
                u.created_at, u.updated_at,
-               GROUP_CONCAT(r.name) as roles,
-               CASE WHEN GROUP_CONCAT(r.name) LIKE '%Admin%' THEN TRUE ELSE FALSE END as is_admin
+               r.name as roles
         FROM users u
-        LEFT JOIN user_roles ur ON u.users_id = ur.users_id AND ur.is_active = TRUE
-        LEFT JOIN roles r ON ur.roles_id = r.roles_id AND r.is_active = TRUE
-        WHERE u.users_id = :user_id AND u.is_active = TRUE
-        GROUP BY u.users_id
+        Inner JOIN user_roles ur ON u.users_id = ur.users_id
+        Inner JOIN roles r ON ur.roles_id = r.roles_id 
+        WHERE u.users_id = :user_id AND u.is_active = TRUE;
+        
         """
         
         values = {"user_id": user_id}
@@ -152,6 +171,10 @@ class AuthService:
         if not user:
             return None
         
+        # password = hash_password(password)
+        
+        # print(password)
+        # print(user["password_hash"])
         if not verify_password(password, user["password_hash"]):
             return None
         
@@ -192,7 +215,7 @@ class AuthService:
             "access_token": access_token,
             "refresh_token": refresh_token,
             "token_type": "bearer",
-            "expires_in": settings.access_token_expire_minutes * 60
+            "expires_in": settings.access_token_expire_days
         }
     
     async def store_refresh_token(self, user_id: str, refresh_token: str) -> None:
@@ -344,7 +367,98 @@ class AuthService:
             return True
         
         return False
+    
+    async def authenticate_with_azure(self, id_token: str) -> Dict[str, Any]:
+        """
+        Verify Azure ID token (from MSAL in frontend), auto-provision local user if necessary,
+        and issue local app tokens.
+        """
+        payload = await verify_azure_token(id_token)
+
+        email = payload.get("email") or payload.get("preferred_username")
+        first_name = payload.get("given_name", "") or payload.get("name", "").split(" ")[0] if payload.get("name") else ""
+        last_name = payload.get("family_name", "")
+
+        if not email:
+            raise HTTPException(status_code=400, detail="Azure token missing email")
+
+        # Check for existing user (by email or username)
+        existing = await self.get_user_by_email_or_username(email, email)
+        if not existing:
+            # Create user with random password (not used)
+            user = await self.create_user(
+                email=email,
+                username=email,
+                # password=str("Password@123"),
+                password=str(uuid.uuid4()),
+                first_name=first_name,
+                last_name=last_name,
+            )
+        else:
+            user = existing
+
+        await self._update_last_login(user["users_id"])
+        return await self.create_tokens(user)
+
+    async def authenticate_with_azure_code(self, code: str) -> Dict[str, Any]:
+        """
+        Redirect-based OAuth2 login:
+        Exchange auth code for tokens, verify ID token, create/get user, and return app tokens.
+        """
+        token_url = settings.azure_ad_token_url
+
+        data = {
+            "client_id": settings.azure_ad_client_id,
+            "client_secret": settings.azure_ad_client_secret,
+            "grant_type": "authorization_code",
+            "code": code,
+            "redirect_uri": settings.azure_ad_redirect_uri,
+            "scope": settings.azure_ad_scope,
+        }
+
+        async with httpx.AsyncClient() as client:
+            resp = await client.post(token_url, data=data, timeout=10.0)
+        if resp.status_code != 200:
+            detail = f"Azure token exchange failed: {resp.status_code} {resp.text}"
+            logger.error(detail)
+            raise HTTPException(status_code=400, detail=detail)
+
+        token_data = resp.json()
+        id_token = token_data.get("id_token")
+        if not id_token:
+            raise HTTPException(status_code=400, detail="Azure did not return ID token")
+
+        # Verify ID token using the helper (uses JWKS)
+        payload = await verify_azure_token(id_token)
+
+        # Extract user info
+        email = payload.get("email") or payload.get("preferred_username")
+        name = payload.get("name", "")
+        first_name = payload.get("given_name", "") or (name.split(" ")[0] if name else "")
+        last_name = payload.get("family_name", "") or (name.split(" ")[1] if " " in name else "")
+
+        if not email:
+            raise HTTPException(status_code=400, detail="Email not found in Azure token")
+
+        existing = await self.get_user_by_email_or_username(email, email)
+        if not existing:
+            user = await self.create_user(
+                email=email,
+                username=email,
+                password=str(uuid.uuid4()),
+                first_name=first_name,
+                last_name=last_name,
+            )
+            users_id = user["users_id"]
+        else:
+            user = existing
+
+        print(user)
+        
+        await self._update_last_login(user["users_id"])
+        tokens = await self.create_tokens(user)
+        return tokens
 
 
-# Global auth service instance
+# Global instance
 auth_service = AuthService()

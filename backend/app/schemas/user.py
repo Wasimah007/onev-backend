@@ -18,7 +18,8 @@ class UserBase(BaseModel):
 class UserCreate(UserBase):
     """Schema for creating a user."""
     password: str = Field(..., min_length=8, max_length=100)
-    department_id: Optional[int] = None
+    group: Optional[str] = None
+    # department_id: Optional[int] = None
     is_admin: bool = False
 
 
@@ -28,17 +29,17 @@ class UserUpdate(BaseModel):
     username: Optional[str] = Field(None, min_length=3, max_length=100)
     first_name: Optional[str] = Field(None, max_length=100)
     last_name: Optional[str] = Field(None, max_length=100)
-    department_id: Optional[int] = None
+    # department_id: Optional[int] = None
     is_active: Optional[bool] = None
     is_admin: Optional[bool] = None
 
 
 class UserResponse(UserBase):
     """Schema for user response."""
-    id: int
-    is_active: bool
-    is_admin: bool
-    department_id: Optional[int]
+    users_id: str
+    is_active: Optional[bool] = None
+    is_admin: Optional[bool] = None
+    # department_id: Optional[int]
     created_at: datetime
     updated_at: datetime
 

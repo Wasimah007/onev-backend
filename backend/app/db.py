@@ -105,6 +105,9 @@ class DatabaseManager:
         """Start a database transaction context manager."""
         db = await self.get_db()
         return db.transaction()
+    
+    
+
 
 
 # Global database manager instance

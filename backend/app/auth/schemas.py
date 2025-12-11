@@ -44,14 +44,15 @@ class AccessTokenResponse(BaseModel):
 
 class UserProfile(BaseModel):
     """Schema for user profile response."""
-    id: int
+    users_id: str
     email: str
     username: str
+    roles: Optional[str] = None
     first_name: Optional[str]
     last_name: Optional[str]
     is_active: bool
-    is_admin: bool
-    department_id: Optional[int]
+    is_admin: Optional[bool] = False
+    #department_id: Optional[int]
     created_at: datetime
     updated_at: datetime
 

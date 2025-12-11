@@ -29,7 +29,8 @@ async def create_user(
             password=user_data.password,
             first_name=user_data.first_name,
             last_name=user_data.last_name,
-            department_id=user_data.department_id,
+            group=user_data.group,
+            # department_id=user_data.department_id,
             is_admin=user_data.is_admin
         )
         
@@ -56,7 +57,7 @@ async def get_users(
     page: int = Query(1, ge=1),
     page_size: int = Query(20, ge=1, le=100),
     search: Optional[str] = Query(None),
-    department_id: Optional[int] = Query(None),
+    # department_id: Optional[int] = Query(None),
     is_active: Optional[bool] = Query(None),
     current_user: Dict[str, Any] = Depends(get_current_user)
 ):
@@ -66,7 +67,7 @@ async def get_users(
             page=page,
             page_size=page_size,
             search=search,
-            department_id=department_id,
+            # department_id=department_id,
             is_active=is_active
         )
         
@@ -92,19 +93,19 @@ async def get_users(
 
 @router.get("/{user_id}", response_model=UserResponse)
 async def get_user(
-    user_id: int,
+    users_id: str,
     current_user: Dict[str, Any] = Depends(get_current_user)
 ):
     """Get user by ID."""
     try:
         # Users can only view their own profile unless they are admin
-        if current_user["id"] != user_id and not current_user.get("is_admin", False):
+        if current_user["users_id"] != users_id and not current_user.get("email","admin@example.com"):#current_user.get("is_admin", False):
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="Not authorized to view this user"
             )
         
-        user = await user_service.get_user_by_id(user_id)
+        user = await user_service.get_user_by_id(users_id)
         
         if user is None:
             raise HTTPException(
@@ -126,14 +127,14 @@ async def get_user(
 
 @router.put("/{user_id}", response_model=UserResponse)
 async def update_user(
-    user_id: int,
+    user_id: str,
     user_data: UserUpdate,
     current_user: Dict[str, Any] = Depends(get_current_user)
 ):
     """Update user information."""
     try:
         # Users can only update their own profile unless they are admin
-        if current_user["id"] != user_id and not current_user.get("is_admin", False):
+        if current_user["users_id"] != user_id and not current_user.get("is_admin", False):
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="Not authorized to update this user"
@@ -150,7 +151,7 @@ async def update_user(
             username=user_data.username,
             first_name=user_data.first_name,
             last_name=user_data.last_name,
-            department_id=user_data.department_id,
+            # department_id=user_data.department_id,
             is_active=user_data.is_active,
             is_admin=user_data.is_admin
         )
@@ -175,13 +176,13 @@ async def update_user(
 
 @router.delete("/{user_id}", status_code=status.HTTP_204_NO_CONTENT)
 async def delete_user(
-    user_id: int,
+    user_id: str,
     current_user: Dict[str, Any] = Depends(get_current_admin_user)
 ):
     """Delete user (admin only)."""
     try:
         # Prevent admin from deleting themselves
-        if current_user["id"] == user_id:
+        if current_user["users_id"] == user_id:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="Cannot delete your own account"

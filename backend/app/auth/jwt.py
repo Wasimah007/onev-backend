@@ -18,7 +18,7 @@ def create_access_token(data: Dict[str, Any], expires_delta: Optional[timedelta]
     if expires_delta:
         expire = datetime.utcnow() + expires_delta
     else:
-        expire = datetime.utcnow() + timedelta(minutes=settings.access_token_expire_minutes)
+        expire = datetime.utcnow() + timedelta(days=settings.access_token_expire_days)
     
     to_encode.update({"exp": expire, "type": "access"})
     
@@ -28,6 +28,7 @@ def create_access_token(data: Dict[str, Any], expires_delta: Optional[timedelta]
         algorithm=settings.jwt_algorithm
     )
     
+    print(encoded_jwt)
     return encoded_jwt
 
 

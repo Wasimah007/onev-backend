@@ -15,10 +15,10 @@ from slowapi.middleware import SlowAPIMiddleware
 
 from app.config import settings
 from app.db import connect_db, disconnect_db
-from app.auth.router import router as auth_router
 from app.routers.users import router as users_router
-from app.routers.timesheet import router as timesheet_router
-
+from app.auth.router import router as auth_router
+from app.routers.syn_from_onev import router as sync_from_onev_router
+# from app.routers.timesheets import router as timesheet_router
 # Configure structured logging
 structlog.configure(
     processors=[
@@ -143,9 +143,15 @@ async def health_check(request: Request):
 
 # Include routers
 app.include_router(auth_router, prefix=settings.api_v1_prefix)
-app.include_router(users_router, prefix=settings.api_v1_prefix)
-app.include_router(timesheet_router, prefix=settings.api_v1_prefix)
-
+# app.include_router(users_router, prefix=settings.api_v1_prefix)
+app.include_router(sync_from_onev_router, prefix=settings.api_v1_prefix)
+# app.include_router(users_router, prefix=settings.api_v1_prefix)
+# app.include_router(timesheet_router, prefix=settings.api_v1_prefix)
+# app.include_router(projects_router, prefix=settings.api_v1_prefix)
+#app.include_router(organisation_router, prefix=settings.api_v1_prefix)
+# app.include_router(manager_router, prefix=settings.api_v1_prefix)
+# app.include_router(user_sync_router, prefix=settings.api_v1_prefix)
+# app.include_router(auth_router, prefix=settings.api_v1_prefix)
 
 # Root endpoint
 @app.get("/", tags=["Root"])
