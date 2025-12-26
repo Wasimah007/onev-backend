@@ -51,9 +51,9 @@ stages:
         deploy:
           steps:
           - task: AzureWebApp@1
-            displayName: 'Deploy Backend Web App'
+            displayName: 'Azure App Service Deploy: onevapiback'
             inputs:
-              azureSubscription: '5f235e97-d4b5-495d-ab4b-9142fe2b57d7'
+              ConnectedServiceName: 5f235e97-d4b5-495d-ab4b-9142fe2b57d7
               appType: 'webAppLinux'
               appName: 'onevapiback'
               package: '$(Pipeline.Workspace)/drop/backend.zip'
