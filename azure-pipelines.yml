@@ -1,0 +1,62 @@
+trigger:
+  branches:
+    include:
+      - master
+
+pool:
+  name: onevfrontendVM
+
+stages:
+
+- stage: Build
+  jobs:
+  - job: BuildJob
+    steps:
+    - task: CmdLine@2
+      displayName: "Install requirements"
+      inputs:
+        script: |
+          #python3.11 -m venv antenv
+          python3 --version
+          pip3 --version
+          echo "No venv created in CI"
+          #source antenv/bin/activate
+          #python -m pip install --upgrade pip
+          #pip install -r backend/requirements.txt
+        failOnStderr: true
+
+    - task: ArchiveFiles@2
+      displayName: 'Archive files'
+      inputs:
+        rootFolderOrFile: 'backend'
+        includeRootFolder: false
+        archiveType: zip
+        archiveFile: '$(Build.ArtifactStagingDirectory)/backend.zip'
+        replaceExistingArchive: true
+
+    - task: PublishBuildArtifacts@1
+      inputs:
+        PathtoPublish: '$(Build.ArtifactStagingDirectory)'
+        ArtifactName: 'drop'
+        publishLocation: 'Container'
+
+- stage: Deploy
+  displayName: 'Deploy Web App'
+  dependsOn: Build
+  jobs:
+  - deployment: DeploymentJob
+    environment: $(environmentName)
+    strategy:
+      runOnce:
+        deploy:
+          steps:
+          # Removed UsePythonVersion task
+          - task: AzureWebApp@1
+            displayName: 'Deploy Azure Web App'
+            inputs:
+              azureSubscription: 'Azure subscription 1 (26153327-5c7b-4834-9cf8-244f585a7599)'
+              appType: 'webAppLinux'
+              appName: 'onevapiback'
+              package: '$(Pipeline.Workspace)/drop/backend.zip'
+              runtimeStack: 'PYTHON|3.11'
+              #startUpCommand: 'startup.txt'
