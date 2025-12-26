@@ -70,7 +70,7 @@ async def lifespan(app: FastAPI):
 # Create FastAPI application
 app = FastAPI(
     title=settings.app_name,
-    description="Production-ready FastAPI backend with raw SQL and JWT authenticationss",
+    description="Production-ready FastAPI backend with raw SQL and JWT authenticationsss",
     version=settings.version,
     docs_url="/docs",
     redoc_url="/redoc",
