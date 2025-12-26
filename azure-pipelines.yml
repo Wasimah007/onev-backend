@@ -50,13 +50,11 @@ stages:
       runOnce:
         deploy:
           steps:
-          # Removed UsePythonVersion task
           - task: AzureWebApp@1
-            displayName: 'Deploy Azure Web App'
+            displayName: 'Deploy Backend Web App'
             inputs:
-              azureSubscription: 'Azure subscription 1 (26153327-5c7b-4834-9cf8-244f585a7599)'
+              azureSubscription: '5f235e97-d4b5-495d-ab4b-9142fe2b57d7'
               appType: 'webAppLinux'
               appName: 'onevapiback'
               package: '$(Pipeline.Workspace)/drop/backend.zip'
               runtimeStack: 'PYTHON|3.11'
-              #startUpCommand: 'startup.txt'
