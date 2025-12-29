@@ -53,7 +53,7 @@ stages:
           - task: AzureWebApp@1
             displayName: 'Azure App Service Deploy: onevapiback'
             inputs:
-              azureSubscription: 'Azure subscription 1 (26153327-5c7b-4834-9cf8-244f585a7599)'
+              azureSubscription: 'onev-backend-api'
               appType: 'webAppLinux'
               appName: 'onevapiback'
               package: '$(Pipeline.Workspace)/drop/backend.zip'
