@@ -53,8 +53,8 @@ stages:
           - task: AzureWebApp@1
             displayName: 'Azure App Service Deploy: onevapiback'
             inputs:
-              azureSubscription: 'onev-backend-api'
-              appType: 'webAppLinux'
-              appName: 'onevapiback'
-              package: '$(Pipeline.Workspace)/drop/backend.zip'
-              runtimeStack: 'PYTHON|3.11'
+              ConnectedServiceName: c1c47cd1-2e4a-4848-b397-82d0f40de28d
+              WebAppKind: webAppLinux
+              WebAppName: 'onevapiback'
+              Package: '$(Pipeline.Workspace)/drop/backend.zip'
+              RuntimeStack: 'PYTHON|3.11'
